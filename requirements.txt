@@ -3,3 +3,5 @@ python-dotenv
 SpeechRecognition 
 gTTS 
 playsound
+pvporcupine
+pyaudio

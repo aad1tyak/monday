@@ -9,21 +9,16 @@ voice_io = VoiceIO()
 
 
 # --- Main Assistant Logic ---
-def run_assistant():
+def run_monday():
     """
-    Main function to run the interactive AI terminal assistant with voice.
+    Main function to run the monday with voice.
     """
-    print("Welcome to your Gemini-powered Voice Terminal Assistant!")
-    print("Say 'exit' or 'quit' to end the session.")
-    print("To execute a command, say 'Run:' or 'Execute:' followed by your request.")
-    print("-" * 50)
 
     # Initialize the GeminiClient
     gemini_client = GeminiClient() 
 
     # Initial greeting from the AI
-    initial_greeting = "Hello! I'm ready to help. What can I do for you?"
-    print(f"AI: {initial_greeting}")
+    initial_greeting = "Hello! Monday here ready to assist you. Remember, you can say 'Run:' or 'Execute:' followed by your command request, and exit or quit to end the session. Let's get started!"
     voice_io.speak_text(initial_greeting) # Use the method from VoiceIO
 
     while True:
