@@ -5,3 +5,4 @@ gTTS
 playsound
 pvporcupine
 pyaudio
+Pillow

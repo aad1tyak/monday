@@ -1,2 +1,4 @@
 .env
 history.json
+venv/
+__pycache__/
