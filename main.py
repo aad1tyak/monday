@@ -35,7 +35,9 @@ def run_monday():
     # Initialize the GeminiClient
     gemini_client = GeminiClient() 
 
-    #
+    # Initial greeting from the AI
+    initial_greeting = "Hello! Monday here ready to assist you. Remember, you can say 'Run:' or 'Execute:' followed by your command request, and exit or quit to end the session. Let's get started!"
+    voice_io.speak_text(initial_greeting) 
 
     while True:
         user_input = voice_io.listen() 
@@ -46,30 +48,47 @@ def run_monday():
         if user_input.lower() in ["exit", "quit", "goodbye monday"]:
             voice_io.speak_text("Exiting assistant. Goodbye!")
             break
+        
+        # Always send user input to Gemini first for a response
+        voice_io.speak_text("Wait, I am looking into it....")
+        gemini_response_text = gemini_client.send_prompt(user_input)
+        voice_io.speak_text(gemini_response_text) # Speak Gemini's initial response
 
-        # Check if the user wants to run a command
-        if user_input.lower() in ["run", "execute"]:
-            command_request = user_input[user_input.lower().find(":") + 1:].strip()
-
-            gemini_raw_response = gemini_client.send_prompt(f"Suggest a Linux command for: {command_request}. Prefix the command with 'COMMAND:'")
-
-            command_match = re.search(r"COMMAND:\s*(.*)", gemini_raw_response, re.IGNORECASE)
-            suggested_command = None
+        suggested_command = None
+        # Check if Gemini's response contains a command suggestion (case-sensitive "COMMAND:")
+        if "COMMAND:" in gemini_response_text:
+            # Try to extract the command from the response
+            command_match = re.search(r"COMMAND:\s*(.*)", gemini_response_text)
+            
 
             if command_match:
                 suggested_command = command_match.group(1).strip()
-                voice_io.speak_text(f"I suggest the command: {suggested_command}. Do you want to execute this?") 
-                
-                # Command confirmation is now voice-based for convenience
-                voice_io.speak_text("Please say yes to confirm, or no to cancel.")
-                confirm = voice_io.listen().strip().lower()
-                while confirm not in ["yes", "no"]:
-                    voice_io.speak_text("I didn't catch that. Please say yes or no.")
-                    confirm = voice_io.listen().strip().lower()
+                voice_io.speak_text(f"I found the command: {suggested_command}.")
+            else:
+                # If COMMAND: was found but extraction failed (e.g., malformed)
+                voice_io.speak_text("I could not extract a clear command after 'COMMAND:'. Please try rephrasing.")
+                print("\nAI could not extract a clear command from its response.")
+                print("Gemini's full response was:")
+                print(gemini_response_text)
+                continue # Go back to listening for user input
 
-                if confirm == 'yes':
+            # Loop for command action (run/analyze/cancel)
+            while True:
+                voice_io.speak_text("Please say Yes to run the command, No to cancel, or Analyze to check for any negative consequences.")
+                command_action = voice_io.listen().strip().lower()
+
+                if command_action == "analyze":
+                    voice_io.speak_text("Analyzing command for potential issues...")
+                    # Send the command for analysis to LLM
+                    analysis_prompt = f"Analyze the potential harm or consequences of the Linux command: `{suggested_command}`. Answer briefly and present your answer as an analysis."
+                    analysis_response = gemini_client.send_prompt(analysis_prompt)
+                    voice_io.speak_text(f"Analysis: {analysis_response}")
+                    # After analysis, loop back to ask for execution/cancel/analyze again
+                    continue 
+
+                elif command_action == "yes":
                     try:
-                        voice_io.speak_text(f"\nExecuting: `{suggested_command}` Command.") 
+                        voice_io.speak_text(f"Executing: `{suggested_command}` Command.") 
                         result = subprocess.run(
                             suggested_command,
                             shell=True,
@@ -83,32 +102,38 @@ def run_monday():
                             print("--- Command Error Output ---")
                             print(result.stderr)
                         print("----------------------")
-                        voice_io.speak_text("Command executed successfully. Check the terminal for output.") 
+
+                        # Send command output to LLM for summary/analysis
+                        output_summary_prompt = (
+                            f"The command `{suggested_command}` was executed. "
+                            f"Here is its output:\n```\n{result.stdout}\n{result.stderr}\n```\n"
+                            f"Summarize the relevant information from this output or answer the user's previous question based on it. Be brief and concise."
+                        )
+                        summary_response = gemini_client.send_prompt(output_summary_prompt)
+                        voice_io.speak_text(f"Command executed successfully. Here's what I found: {summary_response}")
+                        break # Exit the command action loop, go back to main listening loop
 
                     except subprocess.CalledProcessError as e:
                         error_message = f"Error executing command: {e.stderr.strip()}"
                         print(f"\n{error_message}")
                         voice_io.speak_text(f"Error executing command. Check the terminal for details.") 
+                        break # Exit the command action loop, go back to main listening loop
                     except FileNotFoundError:
                         error_message = f"Error: Command '{suggested_command.split()[0]}' not found."
                         print(f"\n{error_message}")
                         voice_io.speak_text("Error executing command. Check the terminal for details.") 
+                        break # Exit the command action loop, go back to main listening loop
                     except Exception as e:
                         error_message = f"An unexpected error occurred during command execution: {e}"
                         print(f"\n{error_message}")
                         voice_io.speak_text("Error executing command. Check the terminal for details.") 
+                        break # Exit the command action loop, go back to main listening loop
+                
+                elif command_action == "no":
+                    voice_io.speak_text("Command execution cancelled.")
+                    break # Exit the command action loop, go back to main listening loop
                 else:
-                    voice_io.speak_text("Command execution cancelled.") 
-            else:
-                voice_io.speak_text("I could not extract a clear command from my response. Please try rephrasing.") 
-                print("\nAI could not extract a clear command from its response.")
-                print("Gemini's full response was:")
-                print(gemini_raw_response)
-        else: # This 'else' now correctly handles regular conversation
-            voice_io.speak_text("Wait I am looking into it....")
-            response = gemini_client.send_prompt(user_input)
-            voice_io.speak_text(response) 
-
+                    voice_io.speak_text("I didn't catch that. Please say yes, no, or analysis.")
 
 # --- Wake Word Detection Logic ---
 def wake_word_listener():

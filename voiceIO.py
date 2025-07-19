@@ -20,8 +20,8 @@ class VoiceIO:
         self.recognizer = sr.Recognizer()
         # Set pause_threshold and phrase_time_limit as properties of the recognizer
         # This is compatible with a wider range of speech_recognition versions
-        self.recognizer.pause_threshold = 5  # Seconds of non-speaking audio to consider a phrase complete
-        self.recognizer.phrase_time_limit = 60 # Maximum duration of a phrase
+        self.recognizer.pause_threshold = 3  # Seconds of non-speaking audio to consider a phrase complete
+        self.recognizer.phrase_time_limit = 15 # Maximum duration of a phrase
 
     def _play_audio_and_cleanup(self, filename: str):
         """
